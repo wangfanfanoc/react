@@ -19,6 +19,7 @@ function App() {
     //  inputRef.current.style.transtion="all 3s"
 
     // },[])
+
     React.useLayoutEffect(() => {
         console.log('useLayoutEffect')
         inputRef.current.style.transform = "translate(200px)"

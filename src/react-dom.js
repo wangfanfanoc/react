@@ -25,30 +25,31 @@ function render(vdom, container) {
 
 }
 //useRef
-export function useRef(inistalState){
-    hookSstate[hookIndex] = hookSstate[hookIndex]||{current:inistalState}
-    return hookSstate[hookIndex++] 
+export function useRef(inistalState) {
+    hookSstate[hookIndex] = hookSstate[hookIndex] || { current: inistalState }
+    return hookSstate[hookIndex++]
 }
+
 //定义useState 
 export function useState(inistalState) { // inistalState 默认值
     //赋值
-    // hookSstate[hookIndex] = hookSstate[hookIndex] || inistalState // 0
-    // let currentIndex = hookIndex //
-    // //修改值的方法
-    // function setState(newState) {  //{num:1}
-    //     hookSstate[currentIndex] = newState //获取新值 
-    //     //实现页面更新
-    //     schellUpdate()
-    // }
+    hookSstate[hookIndex] = hookSstate[hookIndex] || inistalState // 0
+    let currentIndex = hookIndex //
+    //修改值的方法
+    function setState(newState) {  //{num:1}
+        hookSstate[currentIndex] = newState //获取新值 
+        //实现页面更新
+        schellUpdate()
+    }
 
-    // return [hookSstate[hookIndex++], setState]
-    return useReducer(null,inistalState)
+    return [hookSstate[hookIndex++], setState]
+    // return useReducer(null, inistalState)
 }
 //实现useEffect
 export function useEffect(callback, deps) {
     let currentIndex = hookIndex //
     if (hookSstate[hookIndex]) { //获取老的数据
-        debugger
+        // debugger
         let [destory, lastDeps] = hookSstate[hookIndex]
         let same = deps.every((dep, index) => dep === lastDeps[index])
         if (same) {
@@ -105,17 +106,17 @@ export function useReducer(reducer, inistalState) { // inistalState 默认值
     // //修改值的方法
     function dispatch(action) {  //{num:1}
         // hookSstate[currentIndex] = reducer(hookSstate[currentIndex], action) //获取新值 
-          //获取老的数据
-          let oldState =hookSstate[currentIndex] 
-          if(reducer){ 
-             let newState = reducer(oldState,action)
-             hookSstate[currentIndex]  = newState
-          }else{ //useState
+        //获取老的数据
+        let oldState = hookSstate[currentIndex]
+        if (reducer) {
+            let newState = reducer(oldState, action)
+            hookSstate[currentIndex] = newState
+        } else { //useState
             //
-            let newState= typeof action =='function'?action(oldState): action
-            hookSstate[currentIndex]  = newState
-          }
-       
+            let newState = typeof action == 'function' ? action(oldState) : action
+            hookSstate[currentIndex] = newState
+        }
+
         //实现页面更新
         schellUpdate()
     }
@@ -306,6 +307,7 @@ function mountFunctionComponent(vdom) {
     let { type, props } = vdom
     let functionVdom = type(props) //type是函数名字，获取到函数的vnode
     // 函数是组件也一样
+    console.log('funcRenderNode');
     vdom.oldReaderVnode = functionVdom
     return crateDom(functionVdom)
 
@@ -318,11 +320,11 @@ function changeChildren(children, dom, props) {
         children = { type: REACT_TEXT, content: children }
         mount(children, dom)
     } else if (typeof children == 'object' && children.type) {//单个children
-        props.children.mountIndex = 0
+        props.children.mountIndex = 0  //给children添加索引
         mount(children, dom)
     } else if (Array.isArray(children)) { //多个children
         children.forEach((item, index) => {
-            item.mountIndex = index
+            item.mountIndex = index  //给children添加索引
             mount(item, dom)
         })
 
@@ -406,7 +408,7 @@ export function twoVnode(parentDom, oldVnode, newVnode, nextDom) {
         //old：div   new:h
         unMountVnode(oldVnode)
         mountVdom(parentDom, newVnode, nextDom)
-    } else { //老的有 新的有 类型相同  就可以进行深度的dom-diff并且可以复用当前的dom节点
+    } else { //老的有 新的有 且类型相同  就可以进行深度的dom-diff并且可以复用当前的dom节点
         updateElement(oldVnode, newVnode)
     }
 
@@ -421,23 +423,21 @@ function updateElement(oldVnode, newVnode) {
         updateProviderComponent(oldVnode, newVnode)
     } else if (oldVnode.type.$$typeofs == REACT_CONTEXT) {
         updateContextComponent(oldVnode, newVnode)
-    } else if (oldVnode.type == REACT_TEXT && newVnode.type == REACT_TEXT) {
+    } else if (oldVnode.type == REACT_TEXT && newVnode.type == REACT_TEXT) {//文本组件
         let currentDom = newVnode.dom = findDOM(oldVnode)
         //获取新的文本的内容
         currentDom.textContent = newVnode.content // {content:55}
-    } else if (typeof oldVnode.type == 'string') {//原生组件
-        //复用老的节点  》 h
+    } else if (typeof oldVnode.type == 'string') {//原生html组件
+        //复用老的真实dom
         let currentDom = newVnode.dom = findDOM(oldVnode)
         //更新属性
         updatePropos(currentDom, oldVnode.props, newVnode.props)
-
-        // debugger
         //更新children
         updataChildren(currentDom, oldVnode.props.children, newVnode.props.children)
         //注意一下函数组件 和类组件
     } else if (typeof oldVnode.type === 'function') {
         if (oldVnode.type.isReactComponent) { //类组件
-            //复用老的函数
+            //复用类的实例 
             newVnode.classInstance = oldVnode.classInstance
             //更新类组件
             updataClassComponent(oldVnode, newVnode)
@@ -489,7 +489,7 @@ function updateContextComponent(oldVnode, newVnode) {
 }
 //更新类组件
 function updataClassComponent(oldVnode, newVnode) {
-    //复用老的实例
+    //复用老的类的实例
     let classInstance = newVnode.classInstance = oldVnode.classInstance
     //注意在这里需要判断一下 是否需要 就收更新组件的数据
     if (classInstance.componentWillReceiveProps) {
@@ -502,9 +502,9 @@ function updataClassComponent(oldVnode, newVnode) {
 function updataFuncionComponent(oldVnode, newVnode) {
     let parentDom = findDOM(oldVnode).parentNode// 获取老的真实dom的父节点
     let { type, props } = newVnode
-    let newRenderVdom = type(props) //获取到新的组件的vnode
+    let newRenderVdom = type(props) //执行函数，  获取到新的组件的Vdom
     twoVnode(parentDom, oldVnode.oldReaderVnode, newRenderVdom)
-    //后面会新的变成就的
+    //twoVnode执行后，新的Vdom就变成了旧的
     oldVnode.oldReaderVnode = newRenderVdom
 
 }
@@ -527,17 +527,19 @@ function updataChildren(parentDom, oldChildren, newChildren) {
         let oldKey = oldVchlid.key ? oldVchlid.key : index
         keyedOldMap[oldKey] = oldVchlid
     });
-    //2遍历新的去老的中查找，进行更新 ，注意 （1）有移动
-    let patch = []//需要移动的数据
-    let lastPlaceIndex = 0
+    //2遍历新的 去老的map中查找，进行更新 ，注意 （1）有移动
+    let patch = []   //需要移动的数据
+    let lastPlaceIndex = 0  //记录位置
 
+    //遍历新的
     newChildren.forEach((newVchild, index) => {
         newVchild.mountIndex = index
         //更加key值去找
         let newKey = newVchild.key ? newVchild.key : index;
+        //去旧的map里寻找
         let oldVchlid = keyedOldMap[newKey]
-        //就有几种情况
-        if (oldVchlid) {//有
+        //几种情况
+        if (oldVchlid) {//找到了
             //更新元素
             updateElement(oldVchlid, newVchild)
             //判断一下是否移动  lastPlaceIndex 
@@ -566,14 +568,14 @@ function updataChildren(parentDom, oldChildren, newChildren) {
 
     // 获取需要移动的元素
     let moveChilren = patch.filter(action => action.type == MOVE).map(action => action.oldVchlid)
-    //遍历完成后再map留下的元素就是没有被复用的元素，需要删除
 
+    //遍历完成后map中留下的元素就是没有被复用的元素，需要删除
     Object.values(keyedOldMap).concat(moveChilren).forEach(oldChildren => {
         let currentDOM = findDOM(oldChildren)
         parentDom.removeChild(currentDOM)
     })
 
-    //插入
+    //处理插入
     patch.forEach(action => {
         let { type, oldVchlid, newVchild, mountIndex } = action
         //获取到真实的Dom节点的集合
@@ -586,9 +588,11 @@ function updataChildren(parentDom, oldChildren, newChildren) {
             } else {//后添加
                 parentDom.appendChild(newDOM)
             }
-        } else if (type == MOVE) {
-            let oldDOM = findDOM(oldVchlid)
-            //再到集合中找到对应的位置，把它删除
+        }
+        //移动
+        else if (type == MOVE) {
+            let oldDOM = findDOM(oldVchlid)  //复用老的dom
+            //到集合中找到对应的位置，把它删除
             let childNode = childNodes[mountIndex] //获取原来老的dom中对应的索引的真实dom
             if (childNode) {
                 parentDom.insertBefore(oldDOM, childNode)

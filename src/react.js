@@ -10,7 +10,7 @@ import {
    useLayoutEffect,
    useRef
 } from './react-dom'
-//jsx => bable =>
+//jsx => bable =>createElement=>vonde
 function createElement(type, config, children) { //ji
    //处理 key ref
    let key, ref
@@ -126,12 +126,12 @@ function memo(type, compare = shallEqual) {
       type
 
    }
-} 
+}
 // 实现 useImperativeHandle
-function useImperativeHandle(ref,factory){
+function useImperativeHandle(ref, factory) {
    ref.current = factory()
 }
-function useContext(context){
+function useContext(context) {
    //返回最新的数据
    return context._currentValue
 }
